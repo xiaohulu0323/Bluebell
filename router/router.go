@@ -1,18 +1,22 @@
-
-package routes
+package router
 
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"web-app/logger"
+
+	"github.com/gin-gonic/gin"
+
+	"web-app/controller"
 )
 
-func Setup()*gin.Engine{
+func Setup() *gin.Engine {
 	r := gin.New()
 	r.Use(logger.GinLogger(), logger.GinRecovery(true))
 
-	r.GET("/", func(c *gin.Context){
+	r.POST("/signup", controller.SignUpHandler)
+
+	r.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "Welcome to Bluebell!")
 	})
 

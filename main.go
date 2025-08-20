@@ -10,11 +10,12 @@ import (
 	"syscall"
 	"time"
 
+	"web-app/controller"
 	"web-app/dao/mysql"
 	"web-app/dao/redis"
 	"web-app/logger"
 	"web-app/pkg/snowflake"
-	"web-app/routes"
+	"web-app/router"
 	"web-app/settings"
 
 	"github.com/spf13/viper"
@@ -60,12 +61,18 @@ func main() {
 		return
 	}
 
+	// 初始化gin框架内置的校验器使用的翻译器
+	if err := controller.InitTrans("zh"); err != nil {
+		fmt.Printf("controller.InitTrans() failed, err: %v \n", err)
+		return
+	}
+
 	// 5. 注册路由
-	r := routes.Setup()
+	r := router.Setup()
 
 	// 6. 启动服务（优雅关机）
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%d", viper.GetInt("app.port")),
+		Addr:    fmt.Sprintf(":%d", viper.GetInt("port")),
 		Handler: r,
 	}
 
