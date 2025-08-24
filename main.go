@@ -23,19 +23,28 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("need config file.eg : bluebell config.yaml")
-		return
-	}
+	// if len(os.Args) < 2 {
+	// 	fmt.Println("need config file.eg : bluebell config.yaml")
+	// 	return
+	// }
 
 	// 1. 加载配置
-	if err := settings.Init(os.Args[1]); err != nil {
+	var err error
+	if len(os.Args) >= 2 {
+		// 有参数，使用指定的配置文件
+		err = settings.Init(os.Args[1])
+	} else {
+		// 没参数，使用默认配置文件
+		err = settings.Init("")
+	}
+	
+	if err != nil {
 		fmt.Printf("settings.Init() failed, err: %v \n", err)
 		return
 	}
 
 	// 2. 初始化日志
-	if err := logger.Init(settings.Conf.LogConfig); err != nil {
+	if err := logger.Init(settings.Conf.LogConfig, settings.Conf.Mode); err != nil {
 		fmt.Printf("logger.Init() failed, err: %v \n", err)
 		return
 	}
@@ -68,7 +77,7 @@ func main() {
 	}
 
 	// 5. 注册路由
-	r := router.Setup()
+	r := router.Setup(settings.Conf.Mode)
 
 	// 6. 启动服务（优雅关机）
 	srv := &http.Server{

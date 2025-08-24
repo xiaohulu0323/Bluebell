@@ -1,0 +1,37 @@
+nohup: ignoring input
+2025-08-24T19:51:38.288+0800	DEBUG	Bluebell/main.go:52	logger init success...
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] POST   /api/v1/signup            --> web-app/controller.SignUpHandler (3 handlers)
+[GIN-debug] POST   /api/v1/login             --> web-app/controller.LoginHandler (3 handlers)
+[GIN-debug] GET    /api/v1/community         --> web-app/controller.CommunityHandler (4 handlers)
+2025-08-24T19:51:48.415+0800	INFO	logger/logger.go:87	/api/v1/login	{"status": 200, "method": "POST", "path": "/api/v1/login", "query": "", "ip": "127.0.0.1", "user-agent": "curl/7.81.0", "errors": "", "cost": "2.787865ms"}
+2025-08-24T19:52:22.535+0800	INFO	logger/logger.go:87	/ping	{"status": 200, "method": "GET", "path": "/ping", "query": "", "ip": "127.0.0.1", "user-agent": "curl/7.81.0", "errors": "", "cost": "53.018µs"}
+2025-08-24T19:52:41.038+0800	INFO	logger/logger.go:87	/api/v1/community	{"status": 200, "method": "GET", "path": "/api/v1/community", "query": "", "ip": "127.0.0.1", "user-agent": "curl/7.81.0", "errors": "", "cost": "133.973µs"}
+2025-08-24T19:52:48.922+0800	INFO	logger/logger.go:87	/api/v1/login	{"status": 200, "method": "POST", "path": "/api/v1/login", "query": "", "ip": "127.0.0.1", "user-agent": "curl/7.81.0", "errors": "", "cost": "1.073849ms"}
+2025-08-24T19:52:55.678+0800	INFO	logger/logger.go:87	/api/v1/login	{"status": 200, "method": "POST", "path": "/api/v1/login", "query": "", "ip": "127.0.0.1", "user-agent": "curl/7.81.0", "errors": "", "cost": "1.25223ms"}
+2025-08-24T19:53:20.323+0800	INFO	logger/logger.go:87	/api/v1/login	{"status": 200, "method": "POST", "path": "/api/v1/login", "query": "", "ip": "127.0.0.1", "user-agent": "python-requests/2.25.1", "errors": "", "cost": "1.306577ms"}
+2025-08-24T19:53:36.997+0800	INFO	logger/logger.go:87	/api/v1/community	{"status": 200, "method": "GET", "path": "/api/v1/community", "query": "", "ip": "127.0.0.1", "user-agent": "curl/7.81.0", "errors": "", "cost": "2.85149ms"}
+2025-08-24T19:54:21.747+0800	INFO	logger/logger.go:87	/api/v1/community	{"status": 200, "method": "POST", "path": "/api/v1/community", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "45.606µs"}
+2025-08-24T19:54:28.791+0800	INFO	logger/logger.go:87	/api/v1/community	{"status": 200, "method": "POST", "path": "/api/v1/community", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "20.918µs"}
+2025-08-24T19:55:26.145+0800	INFO	logger/logger.go:87	/api/v1/login	{"status": 200, "method": "POST", "path": "/api/v1/login", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "1.574539ms"}
+2025-08-24T19:56:16.057+0800	INFO	logger/logger.go:87	/api/v1/community	{"status": 200, "method": "POST", "path": "/api/v1/community", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "16.124µs"}
+2025-08-24T19:56:17.752+0800	INFO	logger/logger.go:87	/api/v1/community	{"status": 200, "method": "POST", "path": "/api/v1/community", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "17.427µs"}
+2025-08-24T19:56:18.495+0800	INFO	logger/logger.go:87	/api/v1/community	{"status": 200, "method": "POST", "path": "/api/v1/community", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "19.553µs"}
+2025-08-24T19:56:53.106+0800	INFO	logger/logger.go:87	/api/v1/community	{"status": 200, "method": "POST", "path": "/api/v1/community", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "20.073µs"}
+2025-08-24T19:56:54.242+0800	INFO	logger/logger.go:87	/api/v1/community	{"status": 200, "method": "POST", "path": "/api/v1/community", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "19.476µs"}
+2025-08-24T19:56:54.652+0800	INFO	logger/logger.go:87	/api/v1/community	{"status": 200, "method": "POST", "path": "/api/v1/community", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "13.727µs"}
+2025-08-24T19:57:27.478+0800	INFO	logger/logger.go:87	/api/v1/community	{"status": 200, "method": "POST", "path": "/api/v1/community", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "15.765µs"}
+2025-08-24T19:57:28.232+0800	INFO	logger/logger.go:87	/api/v1/community	{"status": 200, "method": "POST", "path": "/api/v1/community", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "15.746µs"}
+2025-08-24T19:57:28.097+0800	INFO	logger/logger.go:87	/api/v1/community	{"status": 200, "method": "POST", "path": "/api/v1/community", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "20.012µs"}
+2025-08-24T19:57:28.823+0800	INFO	logger/logger.go:87	/api/v1/community	{"status": 200, "method": "POST", "path": "/api/v1/community", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "19.914µs"}
+2025-08-24T19:59:09.180+0800	INFO	logger/logger.go:87	/api/v1/community	{"status": 200, "method": "GET", "path": "/api/v1/community", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "973.143µs"}
+2025-08-24T22:20:32.272+0800	INFO	logger/logger.go:87	/api/v1/community/1	{"status": 200, "method": "GET", "path": "/api/v1/community/1", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "60.156µs"}
+2025-08-24T22:20:42.073+0800	INFO	logger/logger.go:87	/api/v1/community/1	{"status": 200, "method": "GET", "path": "/api/v1/community/1", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "19.596µs"}
+2025-08-24T22:20:42.892+0800	INFO	logger/logger.go:87	/api/v1/community/1	{"status": 200, "method": "GET", "path": "/api/v1/community/1", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "14.407µs"}
+2025-08-24T22:20:46.783+0800	INFO	logger/logger.go:87	/api/v1/login	{"status": 200, "method": "POST", "path": "/api/v1/login", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "1.928921ms"}
+2025-08-24T22:21:01.480+0800	INFO	logger/logger.go:87	/api/v1/community/1	{"status": 200, "method": "GET", "path": "/api/v1/community/1", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "14.027µs"}
+2025-08-24T22:21:02.519+0800	INFO	logger/logger.go:87	/api/v1/community/1	{"status": 200, "method": "GET", "path": "/api/v1/community/1", "query": "", "ip": "127.0.0.1", "user-agent": "PostmanRuntime/7.45.0", "errors": "", "cost": "71.388µs"}
+signal: killed
