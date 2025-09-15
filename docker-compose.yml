@@ -1,0 +1,41 @@
+# docker compose 配置（后端 + MySQL + Redis）
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: bluebell-mysql
+    command:
+      - --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: "781129"
+      MYSQL_DATABASE: "bluebell"
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+
+  redis:
+    image: redis:6.2
+    container_name: bluebell-redis
+    command:
+      - redis-server
+      - --requirepass
+      - "781129"
+    ports:
+      - "6379:6379"
+
+  app:
+    build: .
+    container_name: bluebell-app
+    depends_on:
+      - mysql
+      - redis
+    ports:
+      - "8081:8081"
+    command:
+      - bash
+      - -c
+      - ./wait-for.sh mysql:3306 redis:6379 -- ./bluebell ./conf/config.docker.yaml
+
+volumes:
+  mysql_data:

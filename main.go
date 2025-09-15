@@ -1,5 +1,19 @@
 package main
 
+// @title           Bluebell API
+// @version         1.0
+// @description     Bluebell 社区论坛接口文档。
+// @termsOfService  http://swagger.io/terms/
+// @contact.name    API Support
+// @contact.email   support@example.com
+// @license.name    Apache 2.0
+// @license.url     http://www.apache.org/licenses/LICENSE-2.0.html
+// @BasePath        /api/v1
+// @schemes         http
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
+
 import (
 	"context"
 	"fmt"
@@ -17,6 +31,9 @@ import (
 	"web-app/pkg/snowflake"
 	"web-app/router"
 	"web-app/settings"
+
+	// swagger docs
+	docs "web-app/docs"
 
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -37,7 +54,7 @@ func main() {
 		// 没参数，使用默认配置文件
 		err = settings.Init("")
 	}
-	
+
 	if err != nil {
 		fmt.Printf("settings.Init() failed, err: %v \n", err)
 		return
@@ -77,6 +94,11 @@ func main() {
 	}
 
 	// 5. 注册路由
+	// 配置 swagger 基础信息（可选）
+	docs.SwaggerInfo.Title = settings.Conf.Name + " API"
+	docs.SwaggerInfo.Version = settings.Conf.Version
+	docs.SwaggerInfo.BasePath = "/api/v1"
+	docs.SwaggerInfo.Host = fmt.Sprintf("127.0.0.1:%d", viper.GetInt("port"))
 	r := router.Setup(settings.Conf.Mode)
 
 	// 6. 启动服务（优雅关机）

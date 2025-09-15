@@ -3,6 +3,7 @@ package controller
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"web-app/dao/mysql"
 	"web-app/logic"
@@ -15,6 +16,15 @@ import (
 )
 
 // SignUpHandler 处理注册请求的函数
+// @Summary      用户注册
+// @Description  注册新用户
+// @Tags         用户
+// @Accept       json
+// @Produce      json
+// @Param        body  body      models.ParamsSignUp  true  "注册参数"
+// @Success      200   {object}  ResponseData
+// @Failure      200   {object}  ResponseData
+// @Router       /signup [post]
 func SignUpHandler(c *gin.Context) {
 	// 1.获取参数和参数校验
 	p := new(models.ParamsSignUp)
@@ -56,6 +66,16 @@ func SignUpHandler(c *gin.Context) {
 	ResponseSuccess(c, nil)
 }
 
+// LoginHandler 用户登录
+// @Summary      用户登录
+// @Description  获取登录 Token
+// @Tags         用户
+// @Accept       json
+// @Produce      json
+// @Param        body  body      models.ParamsLogin  true  "登录参数"
+// @Success      200   {object}  ResponseData
+// @Failure      200   {object}  ResponseData
+// @Router       /login [post]
 func LoginHandler(c *gin.Context) {
 	// 1. 获取参数和参数校验
 	p := new(models.ParamsLogin)
@@ -73,7 +93,7 @@ func LoginHandler(c *gin.Context) {
 	}
 
 	// 2. 业务逻辑处理
-	token, err := logic.Login(p)
+	user, err := logic.Login(p)
 	if err != nil {
 		zap.L().Error("logic.Login failed", zap.String("username", p.Username), zap.Error(err))
 		if errors.Is(err, mysql.ErrorUserNotExist) {
@@ -85,7 +105,11 @@ func LoginHandler(c *gin.Context) {
 		return
 	}
 	// 3. 返回响应
-	ResponseSuccess(c, token)
+	ResponseSuccess(c, gin.H{
+		"user_id":  strconv.FormatInt(user.UserID, 10), // id 值大于 1<<53-1 （JSON        int64类型的最大值 1<<63-1
+		"username": user.Username,
+		"token":    user.Token,
+	})
 }
 
 // 去除提示信息中的结构体名称
