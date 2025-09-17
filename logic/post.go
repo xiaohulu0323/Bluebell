@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"sync"
 	"web-app/dao/mysql"
 	"web-app/dao/redis"
 	"web-app/models"
@@ -213,7 +214,7 @@ func GetPostListNew(p *models.ParamsPostList) (data []*models.ApiPostDetail, err
 		data, err = GetPostList2(p) // 返回帖子列表
 	} else {
 		// 根据社区id查询
-	data, err = GetCommunityPostList(&models.ParamsCommunityPostList{ParamsPostList: p}) // 返回帖子列表
+		data, err = GetCommunityPostList(&models.ParamsCommunityPostList{ParamsPostList: p}) // 返回帖子列表
 	}
 
 	if err != nil {
@@ -222,4 +223,69 @@ func GetPostListNew(p *models.ParamsPostList) (data []*models.ApiPostDetail, err
 	}
 	return
 
+}
+
+// GetPostByIDConcurrent 并发版本的帖子详情获取
+// 性能优化：将用户信息和社区信息查询改为并发执行，减少总响应时间
+func GetPostByIDConcurrent(postID int64) (data *models.ApiPostDetail, err error) {
+	// 首先获取帖子基本信息（必须先获取，因为需要AuthorID和CommunityID）
+	post, err := mysql.GetPostByID(postID)
+	if err != nil {
+		zap.L().Error("mysql.GetPostByID() failed", zap.Error(err))
+		return nil, err
+	}
+
+	// 并发获取用户信息和社区信息
+	var (
+		user            *models.User
+		communityDetail *models.CommunityDetail
+		userErr         error
+		communityErr    error
+		wg              sync.WaitGroup
+	)
+
+	// 启动两个goroutine并发查询
+	wg.Add(2)
+
+	// goroutine 1: 获取用户信息
+	go func() {
+		defer wg.Done()
+		user, userErr = mysql.GetUserByID(post.AuthorID)
+		if userErr != nil {
+			zap.L().Error("mysql.GetUserByID() failed",
+				zap.Int64("author_id", post.AuthorID),
+				zap.Error(userErr))
+		}
+	}()
+
+	// goroutine 2: 获取社区信息
+	go func() {
+		defer wg.Done()
+		communityDetail, communityErr = mysql.GetCommunityDetailByID(post.CommunityID)
+		if communityErr != nil {
+			zap.L().Error("mysql.GetCommunityDetailByID() failed",
+				zap.Int64("community_id", post.CommunityID),
+				zap.Error(communityErr))
+		}
+	}()
+
+	// 等待所有goroutine完成
+	wg.Wait()
+
+	// 检查并发查询的错误
+	if userErr != nil {
+		return nil, userErr
+	}
+	if communityErr != nil {
+		return nil, communityErr
+	}
+
+	// 组装返回数据
+	data = &models.ApiPostDetail{
+		AuthorName:      user.Username,
+		Post:            post,
+		CommunityDetail: communityDetail,
+	}
+
+	return data, nil
 }

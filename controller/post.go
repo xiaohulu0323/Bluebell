@@ -2,6 +2,7 @@ package controller
 
 import (
 	"strconv"
+	"time"
 	"web-app/logic"
 	"web-app/models"
 
@@ -69,6 +70,44 @@ func GetPostDetailHandler(c *gin.Context) {
 		return
 	}
 	// 3. 返回相应
+	ResponseSuccess(c, data)
+}
+
+// GetPostDetailConcurrentHandler 获取帖子详情（并发优化版本）
+// @Summary      帖子详情（并发优化）
+// @Description  根据ID获取帖子详情，使用并发查询优化性能
+// @Tags         帖子
+// @Produce      json
+// @Param        id   path      int  true  "帖子ID"
+// @Success      200  {object}  ResponseData
+// @Router       /post/{id}/concurrent [get]
+func GetPostDetailConcurrentHandler(c *gin.Context) {
+	// 1.获取参数（从URL路径中获取帖子id）及参数校验
+	postIDStr := c.Param("id")
+	postID, err := strconv.ParseInt(postIDStr, 10, 64)
+	if err != nil {
+		zap.L().Error("GetPostDetailConcurrent with invalid param", zap.Error(err))
+		ResponseError(c, CodeInvalidParam)
+		return
+	}
+
+	// 2. 使用并发版本获取帖子数据
+	start := time.Now()
+	data, err := logic.GetPostByIDConcurrent(postID)
+	duration := time.Since(start)
+
+	if err != nil {
+		zap.L().Error("logic.GetPostByIDConcurrent() failed", zap.Error(err))
+		ResponseError(c, CodeServerBusy)
+		return
+	}
+
+	// 记录性能信息
+	zap.L().Info("Concurrent post detail query completed",
+		zap.Int64("post_id", postID),
+		zap.Duration("duration", duration))
+
+	// 3. 返回响应
 	ResponseSuccess(c, data)
 }
 

@@ -54,18 +54,19 @@ func Setup(mode string) *gin.Engine {
 	// 登录
 	v1.POST("/login", controller.LoginHandler)
 
-	v1.GET("/posts", controller.GetPostListHandler)      // 帖子列表（分页）
-	v1.GET("/posts2", controller.GetPostListHandler2) // 帖子列表（分页）
-	v1.GET("/community", controller.CommunityHandler)           // 社区列表
-	v1.GET("/community/:id", controller.CommunityDetailHandler) // 社区详情
-	v1.GET("/post/:id", controller.GetPostDetailHandler) // 帖子详情
-	
+	v1.GET("/posts", controller.GetPostListHandler)                           // 帖子列表（分页）
+	v1.GET("/posts2", controller.GetPostListHandler2)                         // 帖子列表（分页）
+	v1.GET("/community", controller.CommunityHandler)                         // 社区列表
+	v1.GET("/community/:id", controller.CommunityDetailHandler)               // 社区详情
+	v1.GET("/post/:id", controller.GetPostDetailHandler)                      // 帖子详情
+	v1.GET("/post/:id/concurrent", controller.GetPostDetailConcurrentHandler) // 帖子详情（并发优化版本）
+
 	// v1.Use(middlewares.JWTAuthMiddleware())
 	v1.Use(middlewares.JWTAuthMiddleware(), middlewares.RateLimitMiddleware(2*time.Second, 1)) // 需要登录认证之后才能访问的接口
 	// 下面这些需要认证
 	// api 限速
 	{
-		v1.POST("/post", controller.CreatePostHandler)       // 发帖
+		v1.POST("/post", controller.CreatePostHandler)  // 发帖
 		v1.POST("/vote", controller.PostVoteController) // 点赞踩)
 	}
 
