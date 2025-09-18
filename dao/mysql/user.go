@@ -4,14 +4,17 @@ import (
 	"crypto/md5"
 	"database/sql"
 	"encoding/hex"
+	"fmt"
+	"strings"
 	"web-app/models"
+
+	"go.uber.org/zap"
 )
 
 // 把每一步数据库操作封装成函数
 // 待logic层根据业务需求调用
 
 const secret = "xp"
-
 
 // CheckUserExist 检查用户是否存在
 func CheckUserExist(username string) (err error) {
@@ -74,4 +77,67 @@ func GetUserByID(userID int64) (user *models.User, err error) {
 	err = db.Get(user, sqlStr, userID)
 
 	return
+}
+
+// BatchGetUsersByIDs 批量根据用户ID列表获取用户信息
+// 解决N+1查询问题的核心函数
+func BatchGetUsersByIDs(userIDs []int64) (userMap map[int64]*models.User, err error) {
+	if len(userIDs) == 0 {
+		return make(map[int64]*models.User), nil
+	}
+
+	// 防止IN查询参数过多导致性能问题
+	const maxBatchSize = 1000
+	if len(userIDs) > maxBatchSize {
+		return nil, fmt.Errorf("too many user IDs: %d, max allowed: %d", len(userIDs), maxBatchSize)
+	}
+
+	// 去重用户ID
+	uniqueIDs := make([]int64, 0, len(userIDs))
+	idSet := make(map[int64]bool)
+	for _, id := range userIDs {
+		if !idSet[id] {
+			uniqueIDs = append(uniqueIDs, id)
+			idSet[id] = true
+		}
+	}
+
+	// 构建IN查询
+	sqlStr := `select user_id, username from user where user_id in (?` + strings.Repeat(`,?`, len(uniqueIDs)-1) + `)`
+
+	// 准备参数
+	args := make([]interface{}, len(uniqueIDs))
+	for i, id := range uniqueIDs {
+		args[i] = id
+	}
+
+	// 执行查询
+	var users []*models.User
+	err = db.Select(&users, sqlStr, args...)
+	if err != nil {
+		return nil, fmt.Errorf("batch get users failed: %w", err)
+	}
+
+	// 转换为map便于查找
+	userMap = make(map[int64]*models.User, len(users))
+	for _, user := range users {
+		userMap[user.UserID] = user
+	}
+
+	// 检查是否所有用户都查询到了
+	if len(userMap) != len(uniqueIDs) {
+		missingIDs := make([]int64, 0)
+		for _, id := range uniqueIDs {
+			if _, exists := userMap[id]; !exists {
+				missingIDs = append(missingIDs, id)
+			}
+		}
+		// 只记录警告，不返回错误，因为某些用户可能被删除了
+		zap.L().Warn("Some users not found in batch query",
+			zap.Int64s("missing_user_ids", missingIDs),
+			zap.Int("requested_count", len(uniqueIDs)),
+			zap.Int("found_count", len(userMap)))
+	}
+
+	return userMap, nil
 }

@@ -211,3 +211,43 @@ func GetPostListHandler2(c *gin.Context) {
 // 	// 2. 返回响应
 // 	ResponseSuccess(c, data)
 // }
+
+// GetPostListOptimizedHandler 获取帖子列表的优化处理函数 - 解决N+1查询问题
+// @Summary      帖子列表（N+1优化版本）
+// @Description  分页获取帖子列表，使用批量查询优化性能
+// @Tags         帖子
+// @Produce      json
+// @Param        page  query     int  false  "页码"  default(1)
+// @Param        size  query     int  false  "条数"  default(10)
+// @Success      200   {object}  ResponseData
+// @Router       /posts/optimized [get]
+func GetPostListOptimizedHandler(c *gin.Context) {
+	// 获取分页参数
+	page, size := getPageInfo(c)
+
+	// 记录开始时间
+	start := time.Now()
+
+	// 1. 使用优化版本获取数据
+	data, err := logic.GetPostListOptimized(page, size)
+
+	// 记录执行时间
+	duration := time.Since(start)
+
+	if err != nil {
+		zap.L().Error("logic.GetPostListOptimized() failed", zap.Error(err))
+		ResponseError(c, CodeServerBusy)
+		return
+	}
+
+	// 记录性能信息
+	zap.L().Info("Optimized post list query completed",
+		zap.Int64("page", page),
+		zap.Int64("size", size),
+		zap.Int("result_count", len(data)),
+		zap.Duration("duration", duration),
+		zap.String("optimization", "N+1_query_solved"))
+
+	// 2. 返回响应
+	ResponseSuccess(c, data)
+}

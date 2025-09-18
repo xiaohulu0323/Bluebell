@@ -289,3 +289,79 @@ func GetPostByIDConcurrent(postID int64) (data *models.ApiPostDetail, err error)
 
 	return data, nil
 }
+
+// GetPostListOptimized 帖子列表优化版本 - 解决N+1查询问题
+// 性能优化：使用批量查询替代循环查询，大幅减少数据库查询次数
+func GetPostListOptimized(page, size int64) (data []*models.ApiPostDetail, err error) {
+	// 1. 获取帖子列表（第1次查询）
+	posts, err := mysql.GetPostList(page, size)
+	if err != nil {
+		zap.L().Error("mysql.GetPostList() failed", zap.Error(err))
+		return nil, err
+	}
+
+	if len(posts) == 0 {
+		return make([]*models.ApiPostDetail, 0), nil
+	}
+
+	// 2. 提取所有需要查询的用户ID和社区ID
+	userIDs := make([]int64, 0, len(posts))
+	communityIDs := make([]int64, 0, len(posts))
+
+	for _, post := range posts {
+		userIDs = append(userIDs, post.AuthorID)
+		communityIDs = append(communityIDs, post.CommunityID)
+	}
+
+	// 3. 批量查询用户信息（第2次查询）
+	userMap, err := mysql.BatchGetUsersByIDs(userIDs)
+	if err != nil {
+		zap.L().Error("mysql.BatchGetUsersByIDs() failed", zap.Error(err))
+		return nil, err
+	}
+
+	// 4. 批量查询社区信息（第3次查询）
+	communityMap, err := mysql.BatchGetCommunitiesByIDs(communityIDs)
+	if err != nil {
+		zap.L().Error("mysql.BatchGetCommunitiesByIDs() failed", zap.Error(err))
+		return nil, err
+	}
+
+	// 5. 组装数据
+	data = make([]*models.ApiPostDetail, 0, len(posts))
+	for _, post := range posts {
+		// 从map中获取用户信息
+		user, userExists := userMap[post.AuthorID]
+		if !userExists {
+			zap.L().Error("User not found in batch result",
+				zap.Int64("author_id", post.AuthorID),
+				zap.Int64("post_id", post.ID))
+			continue // 跳过用户不存在的帖子
+		}
+
+		// 从map中获取社区信息
+		communityDetail, communityExists := communityMap[post.CommunityID]
+		if !communityExists {
+			zap.L().Error("Community not found in batch result",
+				zap.Int64("community_id", post.CommunityID),
+				zap.Int64("post_id", post.ID))
+			continue // 跳过社区不存在的帖子
+		}
+
+		postDetail := &models.ApiPostDetail{
+			AuthorName:      user.Username,
+			Post:            post,
+			CommunityDetail: communityDetail,
+		}
+		data = append(data, postDetail)
+	}
+
+	// 记录性能优化信息
+	zap.L().Info("GetPostListOptimized completed",
+		zap.Int("posts_count", len(posts)),
+		zap.Int("users_queried", len(userMap)),
+		zap.Int("communities_queried", len(communityMap)),
+		zap.String("optimization", "N+1_to_3_queries"))
+
+	return data, nil
+}

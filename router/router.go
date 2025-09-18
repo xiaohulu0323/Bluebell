@@ -55,6 +55,7 @@ func Setup(mode string) *gin.Engine {
 	v1.POST("/login", controller.LoginHandler)
 
 	v1.GET("/posts", controller.GetPostListHandler)                           // 帖子列表（分页）
+	v1.GET("/posts/optimized", controller.GetPostListOptimizedHandler)        // 帖子列表（N+1优化版本）
 	v1.GET("/posts2", controller.GetPostListHandler2)                         // 帖子列表（分页）
 	v1.GET("/community", controller.CommunityHandler)                         // 社区列表
 	v1.GET("/community/:id", controller.CommunityDetailHandler)               // 社区详情
