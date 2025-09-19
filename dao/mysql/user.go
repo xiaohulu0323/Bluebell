@@ -20,7 +20,9 @@ const secret = "xp"
 func CheckUserExist(username string) (err error) {
 	sqlStr := `select count(user_id) from user where username = ?`
 	var count int
-	if err := db.Get(&count, sqlStr, username); err != nil {
+	// 读操作使用读数据库
+	readDB := GetReadDB()
+	if err := readDB.Get(&count, sqlStr, username); err != nil {
 		return err
 	}
 
@@ -35,9 +37,10 @@ func InsertUser(user *models.User) (err error) {
 	// 对密码进行加密
 	user.Password = encryptPassword(user.Password)
 
-	// 执行SQL语句入库
+	// 执行SQL语句入库 - 写操作使用写数据库
 	sqlStr := `insert into user(user_id, username, password) values(?, ?, ?)`
-	_, err = db.Exec(sqlStr, user.UserID, user.Username, user.Password)
+	writeDB := GetWriteDB()
+	_, err = writeDB.Exec(sqlStr, user.UserID, user.Username, user.Password)
 	return
 }
 
@@ -52,7 +55,9 @@ func Login(user *models.User) (err error) {
 	oPassword := user.Password // 用户登录的密码
 
 	sqlStr := `select user_id, username, password from user where username = ?`
-	err = db.Get(user, sqlStr, user.Username) // Get()将数据库查询结果填充到指针指向的结构体
+	// 读操作使用读数据库
+	readDB := GetReadDB()
+	err = readDB.Get(user, sqlStr, user.Username) // Get()将数据库查询结果填充到指针指向的结构体
 	if err == sql.ErrNoRows {
 		return ErrorUserNotExist
 	}
@@ -74,7 +79,9 @@ func Login(user *models.User) (err error) {
 func GetUserByID(userID int64) (user *models.User, err error) {
 	user = new(models.User)
 	sqlStr := `select user_id, username from user where user_id = ?`
-	err = db.Get(user, sqlStr, userID)
+	// 读操作使用读数据库
+	readDB := GetReadDB()
+	err = readDB.Get(user, sqlStr, userID)
 
 	return
 }
@@ -111,9 +118,10 @@ func BatchGetUsersByIDs(userIDs []int64) (userMap map[int64]*models.User, err er
 		args[i] = id
 	}
 
-	// 执行查询
+	// 执行查询 - 批量读操作使用读数据库
 	var users []*models.User
-	err = db.Select(&users, sqlStr, args...)
+	readDB := GetReadDB()
+	err = readDB.Select(&users, sqlStr, args...)
 	if err != nil {
 		return nil, fmt.Errorf("batch get users failed: %w", err)
 	}

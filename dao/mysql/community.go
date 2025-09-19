@@ -12,7 +12,9 @@ import (
 func GetCommunityList() (communityList []*models.Community, err error) {
 	// 查询数据库 查找到所有的community 并返回
 	sqlStr := `select community_id,community_name from community`
-	if err := db.Select(&communityList, sqlStr); err != nil {
+	// 读操作使用读数据库
+	readDB := GetReadDB()
+	if err := readDB.Select(&communityList, sqlStr); err != nil {
 		if err == sql.ErrNoRows {
 			zap.L().Warn("there is no community in db")
 			err = nil
@@ -28,7 +30,9 @@ func GetCommunityDetailByID(id int64) (community *models.CommunityDetail, err er
 	sqlStr := `select community_id,community_name, introduction,create_time 
 				from community
 				where community_id = ?`
-	if err := db.Get(community, sqlStr, id); err != nil {
+	// 读操作使用读数据库
+	readDB := GetReadDB()
+	if err := readDB.Get(community, sqlStr, id); err != nil {
 		if err == sql.ErrNoRows {
 			zap.L().Warn("there is no community in db")
 			err = ErrorInvalidID
@@ -73,7 +77,9 @@ func BatchGetCommunitiesByIDs(communityIDs []int64) (communityMap map[int64]*mod
 
 	// 执行查询
 	var communities []*models.CommunityDetail
-	err = db.Select(&communities, sqlStr, args...)
+	// 读操作使用读数据库
+	readDB := GetReadDB()
+	err = readDB.Select(&communities, sqlStr, args...)
 	if err != nil {
 		return nil, fmt.Errorf("batch get communities failed: %w", err)
 	}

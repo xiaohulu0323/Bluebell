@@ -24,13 +24,17 @@ type AppConfig struct {
 }
 
 type MySQLConfig struct {
-	Host         string `mapstructure:"host"`
-	User         string `mapstructure:"user"`
-	Password     string `mapstructure:"password"`
-	DB           string `mapstructure:"dbname"`
-	Port         int    `mapstructure:"port"`
-	MaxOpenConns int    `mapstructure:"max_open_conns"`
-	MaxIdleConns int    `mapstructure:"max_idle_conns"`
+	Host                 string   `mapstructure:"host"`
+	User                 string   `mapstructure:"user"`
+	Password             string   `mapstructure:"password"`
+	DB                   string   `mapstructure:"dbname"`
+	Port                 int      `mapstructure:"port"`
+	MaxOpenConns         int      `mapstructure:"max_open_conns"`
+	MaxIdleConns         int      `mapstructure:"max_idle_conns"`
+	ConnMaxLifetime      int      `mapstructure:"conn_max_lifetime"`       // 连接最大生命周期(分钟)
+	ConnMaxIdleTime      int      `mapstructure:"conn_max_idle_time"`      // 连接最大空闲时间(分钟)
+	EnableReadWriteSplit bool     `mapstructure:"enable_read_write_split"` // 是否启用读写分离
+	ReadHosts            []string `mapstructure:"read_hosts"`              // 读库地址列表
 }
 
 type RedisConfig struct {
@@ -66,7 +70,6 @@ func Init(filePath string) (err error) {
 
 	// 基本上是配合远程配置中心使用的，告诉viper当前的数据使用什么格式去解析
 	//viper.SetConfigType("json")
-
 
 	if filePath == "" {
 		filePath = defaultFilePath

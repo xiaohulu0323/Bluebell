@@ -13,7 +13,9 @@ func CreatePost(p *models.Post) (err error) {
 	sqlStr := `insert into post(
 post_id, title, content, author_id, community_id)
 value(?, ?, ?, ?, ?)`
-	_, err = db.Exec(sqlStr, p.ID, p.Title, p.Content, p.AuthorID, p.CommunityID)
+	// 写操作使用写数据库
+	writeDB := GetWriteDB()
+	_, err = writeDB.Exec(sqlStr, p.ID, p.Title, p.Content, p.AuthorID, p.CommunityID)
 
 	return
 }
@@ -25,7 +27,9 @@ post_id, title, content, author_id, community_id, status, create_time
 from post
 where post_id = ?`
 	post = new(models.Post)
-	err = db.Get(post, sqlStr, postID)
+	// 读操作使用读数据库
+	readDB := GetReadDB()
+	err = readDB.Get(post, sqlStr, postID)
 	if err == sql.ErrNoRows {
 		return nil, ErrorInvalidID
 	}
@@ -42,7 +46,9 @@ from post
 order by create_time desc
 limit ?, ?`
 	posts = make([]*models.Post, 0, 2) // 预先分配好容量，避免多次切片扩容 不要写成make([]*models.Post, 2)
-	err = db.Select(&posts, sqlStr, (page-1)*size, size) // page=1,size=10 => limit 0,10
+	// 读操作使用读数据库
+	readDB := GetReadDB()
+	err = readDB.Select(&posts, sqlStr, (page-1)*size, size) // page=1,size=10 => limit 0,10
 
 	return
 }
@@ -58,9 +64,11 @@ func GetPostListByIDs(ids []string) (postList []*models.Post, err error) {
 	if err != nil {
 		return nil, err
 	}
-	query = db.Rebind(query)
-	
-	err = db.Select(&postList, query, args...)  // !!!
+	// 读操作使用读数据库
+	readDB := GetReadDB()
+	query = readDB.Rebind(query)
+
+	err = readDB.Select(&postList, query, args...) // !!!
 
 	return
 

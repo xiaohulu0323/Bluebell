@@ -65,6 +65,11 @@ func Setup(mode string) *gin.Engine {
 	v1.GET("/post/:id/cached", controller.GetPostDetailCachedHandler)         // 帖子详情（缓存版本）
 	v1.GET("/cache/stats", controller.GetCacheStatsHandler)                   // 缓存统计信息
 
+	// 数据库监控相关接口
+	v1.GET("/db/stats", controller.GetDBStatsHandler)         // 数据库连接池统计
+	v1.GET("/db/health", controller.GetDBHealthHandler)       // 数据库健康检查
+	v1.POST("/db/optimize", controller.OptimizeDBPoolHandler) // 连接池优化建议（开发环境）
+
 	// v1.Use(middlewares.JWTAuthMiddleware())
 	v1.Use(middlewares.JWTAuthMiddleware(), middlewares.RateLimitMiddleware(2*time.Second, 1)) // 需要登录认证之后才能访问的接口
 	// 下面这些需要认证
