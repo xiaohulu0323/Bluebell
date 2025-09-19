@@ -1,7 +1,9 @@
 package logic
 
 import (
+	"fmt"
 	"sync"
+	"time"
 	"web-app/dao/mysql"
 	"web-app/dao/redis"
 	"web-app/models"
@@ -362,6 +364,266 @@ func GetPostListOptimized(page, size int64) (data []*models.ApiPostDetail, err e
 		zap.Int("users_queried", len(userMap)),
 		zap.Int("communities_queried", len(communityMap)),
 		zap.String("optimization", "N+1_to_3_queries"))
+
+	return data, nil
+}
+
+// GetPostByIDWithCache 根据帖子id获取帖子详情（带缓存）
+func GetPostByIDWithCache(postID int64) (data *models.ApiPostDetail, err error) {
+	start := time.Now()
+
+	// 第一步：尝试从缓存获取完整的帖子详情
+	cachedPost, err := redis.GetPostDetailFromCache(postID)
+	if err != nil {
+		zap.L().Error("redis.GetPostDetailFromCache() failed", zap.Error(err), zap.Int64("post_id", postID))
+		// 缓存错误不影响业务，继续从数据库查询
+	}
+
+	if cachedPost != nil {
+		// 缓存命中，直接返回
+		zap.L().Info("GetPostByIDWithCache cache hit",
+			zap.Int64("post_id", postID),
+			zap.Duration("cost", time.Since(start)))
+		return cachedPost, nil
+	}
+
+	// 第二步：缓存未命中，尝试获取分布式锁防止缓存击穿
+	lockKey := fmt.Sprintf("post:%d", postID)
+	locked, err := redis.TryLock(lockKey)
+	if err != nil {
+		zap.L().Error("redis.TryLock() failed", zap.Error(err), zap.String("lock_key", lockKey))
+	}
+
+	if locked {
+		// 获取到锁，负责查询数据库并更新缓存
+		defer func() {
+			if unlockErr := redis.ReleaseLock(lockKey); unlockErr != nil {
+				zap.L().Error("redis.ReleaseLock() failed", zap.Error(unlockErr), zap.String("lock_key", lockKey))
+			}
+		}()
+
+		// 双重检查：再次尝试从缓存获取
+		cachedPost, err = redis.GetPostDetailFromCache(postID)
+		if err == nil && cachedPost != nil {
+			zap.L().Info("GetPostByIDWithCache double check cache hit",
+				zap.Int64("post_id", postID),
+				zap.Duration("cost", time.Since(start)))
+			return cachedPost, nil
+		}
+
+		// 从数据库查询
+		data, err = queryPostDetailFromDB(postID)
+		if err != nil {
+			return nil, err
+		}
+
+		// 异步更新缓存
+		go func() {
+			if cacheErr := redis.SetPostDetailToCache(postID, data); cacheErr != nil {
+				zap.L().Error("redis.SetPostDetailToCache() failed",
+					zap.Error(cacheErr), zap.Int64("post_id", postID))
+			}
+		}()
+
+		zap.L().Info("GetPostByIDWithCache DB query with cache update",
+			zap.Int64("post_id", postID),
+			zap.Duration("cost", time.Since(start)))
+		return data, nil
+	} else {
+		// 未获取到锁，等待一段时间后重试从缓存获取
+		time.Sleep(50 * time.Millisecond)
+		cachedPost, err = redis.GetPostDetailFromCache(postID)
+		if err == nil && cachedPost != nil {
+			zap.L().Info("GetPostByIDWithCache retry cache hit",
+				zap.Int64("post_id", postID),
+				zap.Duration("cost", time.Since(start)))
+			return cachedPost, nil
+		}
+
+		// 缓存仍未命中，直接查询数据库（降级策略）
+		data, err = queryPostDetailFromDB(postID)
+		if err != nil {
+			return nil, err
+		}
+
+		zap.L().Info("GetPostByIDWithCache fallback to DB",
+			zap.Int64("post_id", postID),
+			zap.Duration("cost", time.Since(start)))
+		return data, nil
+	}
+}
+
+// queryPostDetailFromDB 从数据库查询帖子详情（内部函数）
+func queryPostDetailFromDB(postID int64) (data *models.ApiPostDetail, err error) {
+	// 查询帖子基本信息
+	post, err := mysql.GetPostByID(postID)
+	if err != nil {
+		zap.L().Error("mysql.GetPostByID() failed", zap.Error(err))
+		return nil, err
+	}
+
+	// 根据作者ID查询作者信息
+	user, err := mysql.GetUserByID(post.AuthorID)
+	if err != nil {
+		zap.L().Error("mysql.GetUserByID(post.AuthorID) failed",
+			zap.Int64("author_id", post.AuthorID),
+			zap.Error(err))
+		return nil, err
+	}
+
+	// 根据社区id查询社区详情信息
+	communityDetail, err := mysql.GetCommunityDetailByID(post.CommunityID)
+	if err != nil {
+		zap.L().Error("mysql.GetCommunityDetailByID(post.CommunityID) failed",
+			zap.Int64("community_id", post.CommunityID),
+			zap.Error(err))
+		return nil, err
+	}
+
+	// 组装数据
+	data = &models.ApiPostDetail{
+		AuthorName:      user.Username,
+		Post:            post,
+		CommunityDetail: communityDetail,
+	}
+
+	return data, nil
+}
+
+// GetPostListOptimizedWithCache N+1查询优化版本（带缓存）
+func GetPostListOptimizedWithCache(page, size int64) (data []*models.ApiPostDetail, err error) {
+	start := time.Now()
+
+	// 第一步：获取帖子列表
+	posts, err := mysql.GetPostList(page, size)
+	if err != nil {
+		zap.L().Error("mysql.GetPostList() failed", zap.Error(err))
+		return nil, err
+	}
+
+	if len(posts) == 0 {
+		return []*models.ApiPostDetail{}, nil
+	}
+
+	// 第二步：提取需要查询的ID
+	userIDs := make([]int64, 0, len(posts))
+	communityIDs := make([]int64, 0, len(posts))
+	userIDSet := make(map[int64]bool)
+	communityIDSet := make(map[int64]bool)
+
+	for _, post := range posts {
+		if !userIDSet[post.AuthorID] {
+			userIDs = append(userIDs, post.AuthorID)
+			userIDSet[post.AuthorID] = true
+		}
+		if !communityIDSet[post.CommunityID] {
+			communityIDs = append(communityIDs, post.CommunityID)
+			communityIDSet[post.CommunityID] = true
+		}
+	}
+
+	// 第三步：批量从缓存获取用户信息
+	cachedUsers, missedUserIDs, err := redis.BatchGetUsersFromCache(userIDs)
+	if err != nil {
+		zap.L().Error("redis.BatchGetUsersFromCache() failed", zap.Error(err))
+		// 缓存错误，降级到数据库查询
+		missedUserIDs = userIDs
+		cachedUsers = make(map[int64]*models.User)
+	}
+
+	// 第四步：从数据库查询缓存未命中的用户
+	var dbUsers map[int64]*models.User
+	if len(missedUserIDs) > 0 {
+		dbUsers, err = mysql.BatchGetUsersByIDs(missedUserIDs)
+		if err != nil {
+			zap.L().Error("mysql.BatchGetUsersByIDs() failed", zap.Error(err))
+			return nil, err
+		}
+
+		// 异步更新用户缓存
+		go func() {
+			if cacheErr := redis.BatchSetUsersToCache(dbUsers); cacheErr != nil {
+				zap.L().Error("redis.BatchSetUsersToCache() failed", zap.Error(cacheErr))
+			}
+		}()
+	}
+
+	// 合并用户数据
+	userMap := make(map[int64]*models.User)
+	for id, user := range cachedUsers {
+		userMap[id] = user
+	}
+	for id, user := range dbUsers {
+		userMap[id] = user
+	}
+
+	// 第五步：批量从缓存获取社区信息
+	cachedCommunities, missedCommunityIDs, err := redis.BatchGetCommunitiesFromCache(communityIDs)
+	if err != nil {
+		zap.L().Error("redis.BatchGetCommunitiesFromCache() failed", zap.Error(err))
+		// 缓存错误，降级到数据库查询
+		missedCommunityIDs = communityIDs
+		cachedCommunities = make(map[int64]*models.CommunityDetail)
+	}
+
+	// 第六步：从数据库查询缓存未命中的社区
+	var dbCommunities map[int64]*models.CommunityDetail
+	if len(missedCommunityIDs) > 0 {
+		dbCommunities, err = mysql.BatchGetCommunitiesByIDs(missedCommunityIDs)
+		if err != nil {
+			zap.L().Error("mysql.BatchGetCommunitiesByIDs() failed", zap.Error(err))
+			return nil, err
+		}
+
+		// 异步更新社区缓存
+		go func() {
+			if cacheErr := redis.BatchSetCommunitiesToCache(dbCommunities); cacheErr != nil {
+				zap.L().Error("redis.BatchSetCommunitiesToCache() failed", zap.Error(cacheErr))
+			}
+		}()
+	}
+
+	// 合并社区数据
+	communityMap := make(map[int64]*models.CommunityDetail)
+	for id, community := range cachedCommunities {
+		communityMap[id] = community
+	}
+	for id, community := range dbCommunities {
+		communityMap[id] = community
+	}
+
+	// 第七步：组装数据
+	data = make([]*models.ApiPostDetail, 0, len(posts))
+	for _, post := range posts {
+		user, userExists := userMap[post.AuthorID]
+		if !userExists {
+			zap.L().Error("User not found", zap.Int64("user_id", post.AuthorID))
+			continue
+		}
+
+		communityDetail, communityExists := communityMap[post.CommunityID]
+		if !communityExists {
+			zap.L().Error("Community not found", zap.Int64("community_id", post.CommunityID))
+			continue
+		}
+
+		postDetail := &models.ApiPostDetail{
+			AuthorName:      user.Username,
+			Post:            post,
+			CommunityDetail: communityDetail,
+		}
+		data = append(data, postDetail)
+	}
+
+	// 记录性能优化信息
+	zap.L().Info("GetPostListOptimizedWithCache completed",
+		zap.Int("posts_count", len(posts)),
+		zap.Int("users_cached", len(cachedUsers)),
+		zap.Int("users_from_db", len(dbUsers)),
+		zap.Int("communities_cached", len(cachedCommunities)),
+		zap.Int("communities_from_db", len(dbCommunities)),
+		zap.String("optimization", "N+1_with_cache"),
+		zap.Duration("total_cost", time.Since(start)))
 
 	return data, nil
 }

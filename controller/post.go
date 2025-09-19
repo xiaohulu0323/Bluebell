@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"fmt"
 	"strconv"
 	"time"
+	"web-app/dao/redis"
 	"web-app/logic"
 	"web-app/models"
 
@@ -250,4 +252,116 @@ func GetPostListOptimizedHandler(c *gin.Context) {
 
 	// 2. 返回响应
 	ResponseSuccess(c, data)
+}
+
+// GetPostDetailCachedHandler 获取帖子详情（带缓存）
+// @Summary      获取帖子详情（缓存版本）
+// @Description  根据帖子ID获取帖子详情信息，使用Redis缓存提升性能
+// @Tags         帖子
+// @Accept       json
+// @Produce      json
+// @Param        id   path      int  true  "帖子ID"
+// @Success      200  {object}  ResponseData{data=models.ApiPostDetail}
+// @Router       /post/{id}/cached [get]
+func GetPostDetailCachedHandler(c *gin.Context) {
+	start := time.Now()
+
+	// 1. 获取参数
+	pidStr := c.Param("id")
+	pid, err := strconv.ParseInt(pidStr, 10, 64)
+	if err != nil {
+		zap.L().Error("get post detail with invalid param", zap.Error(err))
+		ResponseError(c, CodeInvalidParam)
+		return
+	}
+
+	// 2. 获取数据（带缓存）
+	data, err := logic.GetPostByIDWithCache(pid)
+	if err != nil {
+		zap.L().Error("logic.GetPostByIDWithCache() failed", zap.Error(err))
+		ResponseError(c, CodeServerBusy)
+		return
+	}
+
+	duration := time.Since(start)
+
+	// 记录性能信息
+	zap.L().Info("Cached post detail query completed",
+		zap.Int64("post_id", pid),
+		zap.Duration("duration", duration),
+		zap.String("optimization", "redis_cache"))
+
+	// 3. 返回响应
+	ResponseSuccess(c, data)
+}
+
+// GetPostListCachedHandler 获取帖子列表（带缓存）
+// @Summary      获取帖子列表（缓存版本）
+// @Description  获取帖子列表，集成N+1优化和Redis缓存
+// @Tags         帖子
+// @Accept       json
+// @Produce      json
+// @Param        page  query     int  false  "页码"
+// @Param        size  query     int  false  "页大小"
+// @Success      200   {object}  ResponseData{data=[]models.ApiPostDetail}
+// @Router       /posts/cached [get]
+func GetPostListCachedHandler(c *gin.Context) {
+	start := time.Now()
+
+	// 1. 获取参数
+	page, size := getPageInfo(c)
+
+	// 2. 获取数据（带缓存）
+	data, err := logic.GetPostListOptimizedWithCache(page, size)
+	if err != nil {
+		zap.L().Error("logic.GetPostListOptimizedWithCache() failed", zap.Error(err))
+		ResponseError(c, CodeServerBusy)
+		return
+	}
+
+	duration := time.Since(start)
+
+	// 记录性能信息
+	zap.L().Info("Cached post list query completed",
+		zap.Int64("page", page),
+		zap.Int64("size", size),
+		zap.Int("result_count", len(data)),
+		zap.Duration("duration", duration),
+		zap.String("optimization", "N+1_with_cache"))
+
+	// 3. 返回响应
+	ResponseSuccess(c, data)
+}
+
+// GetCacheStatsHandler 获取缓存统计信息（调试用）
+// @Summary      获取缓存统计信息
+// @Description  获取Redis缓存的命中率、错误率等统计信息
+// @Tags         系统
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  ResponseData{data=map[string]interface{}}
+// @Router       /cache/stats [get]
+func GetCacheStatsHandler(c *gin.Context) {
+	// 获取缓存统计信息
+	stats := redis.GetCacheStats()
+
+	// 计算命中率
+	result := make(map[string]interface{})
+	for cacheType, stat := range stats {
+		total := stat.HitCount + stat.MissCount
+		hitRate := float64(0)
+		if total > 0 {
+			hitRate = float64(stat.HitCount) / float64(total) * 100
+		}
+
+		result[cacheType] = map[string]interface{}{
+			"hit_count":   stat.HitCount,
+			"miss_count":  stat.MissCount,
+			"error_count": stat.ErrorCount,
+			"hit_rate":    fmt.Sprintf("%.2f%%", hitRate),
+		}
+	}
+
+	zap.L().Info("Cache stats requested", zap.Any("stats", result))
+	ResponseSuccess(c, result)
 }

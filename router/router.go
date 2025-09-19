@@ -56,11 +56,14 @@ func Setup(mode string) *gin.Engine {
 
 	v1.GET("/posts", controller.GetPostListHandler)                           // 帖子列表（分页）
 	v1.GET("/posts/optimized", controller.GetPostListOptimizedHandler)        // 帖子列表（N+1优化版本）
+	v1.GET("/posts/cached", controller.GetPostListCachedHandler)              // 帖子列表（缓存版本）
 	v1.GET("/posts2", controller.GetPostListHandler2)                         // 帖子列表（分页）
 	v1.GET("/community", controller.CommunityHandler)                         // 社区列表
 	v1.GET("/community/:id", controller.CommunityDetailHandler)               // 社区详情
 	v1.GET("/post/:id", controller.GetPostDetailHandler)                      // 帖子详情
 	v1.GET("/post/:id/concurrent", controller.GetPostDetailConcurrentHandler) // 帖子详情（并发优化版本）
+	v1.GET("/post/:id/cached", controller.GetPostDetailCachedHandler)         // 帖子详情（缓存版本）
+	v1.GET("/cache/stats", controller.GetCacheStatsHandler)                   // 缓存统计信息
 
 	// v1.Use(middlewares.JWTAuthMiddleware())
 	v1.Use(middlewares.JWTAuthMiddleware(), middlewares.RateLimitMiddleware(2*time.Second, 1)) // 需要登录认证之后才能访问的接口
