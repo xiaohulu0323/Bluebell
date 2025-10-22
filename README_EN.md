@@ -7,10 +7,8 @@
 ![Redis](https://img.shields.io/badge/Redis-6.2-DC382D?style=flat&logo=redis&logoColor=white)
 ![Vue](https://img.shields.io/badge/Vue-2.6-4FC08D?style=flat&logo=vue.js&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?style=flat&logo=docker&logoColor=white)
-
-A high-performance, scalable Reddit-like community forum system
-
-[Features](#Features) • [Technology Stack](#Technology Stack) • [Quick Start](#Quick Start) • [Architecture Design](#Architecture Design) • [Performance optimization](#Performance optimization)
+一个高性能、易扩展的类 Reddit 社区论坛系统
+[功能特性](#功能特性) • [技术栈](#技术栈) • [快速开始](#快速开始) • [架构设计](#架构设计) • [性能优化](#性能优化)
 
 </div>
 
