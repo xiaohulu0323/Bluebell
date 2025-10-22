@@ -1,17 +1,5 @@
 # Bluebell Community Forum Project
 
-<div align="center">
-![Go](https://img.shields.io/badge/Go-1.23+-00ADD8?style=flat&logo=go)
-![Gin](https://img.shields.io/badge/Gin-1.10+-00ADD8?style=flat&logo=go)
-![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=flat&logo=mysql&logoColor=white)
-![Redis](https://img.shields.io/badge/Redis-6.2-DC382D?style=flat&logo=redis&logoColor=white)
-![Vue](https://img.shields.io/badge/Vue-2.6-4FC08D?style=flat&logo=vue.js&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?style=flat&logo=docker&logoColor=white)
-一个高性能、易扩展的类 Reddit 社区论坛系统
-[功能特性](#功能特性) • [技术栈](#技术栈) • [快速开始](#快速开始) • [架构设计](#架构设计) • [性能优化](#性能优化)
-
-</div>
-
 ---
 
 ## Project Introduction
